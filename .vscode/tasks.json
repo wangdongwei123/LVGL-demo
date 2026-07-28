@@ -1,0 +1,91 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Config GCC ENV",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-G",
+                "Ninja",
+                "-S",
+                ".",
+                "-B",
+                "build",
+                "-DCMAKE_BUILD_TYPE=Debug",//Debug, Release, RelWithDebInfo, MinSizeRel
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$go"
+            ],
+        },
+        {
+            "label": "build demo",
+            "type": "shell",
+            "command": "ninja",
+            "args": [
+                "-C",
+                "build",
+            ],
+            "problemMatcher": [
+                "$go"
+            ],
+            "dependsOn":["Config GCC ENV"]
+        },
+        {
+            "label": "Make and Execute",
+            "type": "shell",
+            "command": "./bin/main.exe",
+            "args": [
+            ],
+            "problemMatcher": [
+                "$go"
+            ],
+            "dependsOn":["cp sdl"]
+        },
+        {
+            "label": "cp sdl",
+            "type": "shell",
+            "command": "cp",
+            "args": [
+                "D:/ENV_TOOLS/mingw64/bin/SDL2.dll",
+                "./bin/",
+            ],
+            "problemMatcher": [
+                "$go"
+            ],
+            "dependsOn":["build demo"]
+        },
+        {
+            "label": "Make clean",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-r",
+                "build",
+            ],
+            "problemMatcher": [
+                "$go"
+            ],
+            "dependsOn":["rm bin"]
+        },
+        {
+            "label": "rm bin",
+            "type": "shell",
+            "command": "rm",
+            "args": [
+                "-r",
+                "bin",
+            ],
+            "problemMatcher": [
+                "$go"
+            ],
+            "dependsOn":[]
+        }
+    ]
+}

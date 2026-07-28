@@ -1,0 +1,9 @@
+/build/
+/bin/*.exe
+/bin/*.dll
+/.cache/
+/.vscode/.cache/
+*.o
+*.obj
+*.a
+*.d

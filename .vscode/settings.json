@@ -1,0 +1,49 @@
+{
+  "terminal.integrated.profiles.windows": {
+      "bash": {
+        "source": "bash",
+        "path": "D:\\ENV_TOOLS\\xpack\\bin\\sh.exe",
+        "args": []
+      },
+      "PowerShell": {
+        "source": "PowerShell",
+        "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "args": []
+      }
+  },
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+
+  "terminal.integrated.env.windows":{
+      "PATH":"D:\\ENV_TOOLS\\mingw64\\bin;D:ENV_TOOLS\\xpack\\bin;"
+  },
+  "debug.allowBreakpointsEverywhere": true,
+  "workbench.colorCustomizations": {
+      "terminal.background": "#181818",
+      "terminal.foreground": "#4a6d50",
+      "terminalCursor.background": "#D8D8D8",
+      "terminalCursor.foreground": "#D8D8D8",
+      "terminal.ansiBlack": "#181818",
+      "terminal.ansiBlue": "#7CAFC2",
+      "terminal.ansiBrightBlack": "#585858",
+      "terminal.ansiBrightBlue": "#7CAFC2",
+      "terminal.ansiBrightCyan": "#86C1B9",
+      "terminal.ansiBrightGreen": "#A1B56C",
+      "terminal.ansiBrightMagenta": "#BA8BAF",
+      "terminal.ansiBrightRed": "#AB4642",
+      "terminal.ansiBrightWhite": "#F8F8F8",
+      "terminal.ansiBrightYellow": "#F7CA88",
+      "terminal.ansiCyan": "#86C1B9",
+      "terminal.ansiGreen": "#A1B56C",
+      "terminal.ansiMagenta": "#BA8BAF",
+      "terminal.ansiRed": "#AB4642",
+      "terminal.ansiWhite": "#D8D8D8",
+      "terminal.ansiYellow": "#F7CA88",
+      "terminal.integrated.cursorBlinking": true,
+      "terminal.integrated.lineHeight": 1.6,
+      "terminal.integrated.letterSpacing": 0.1,
+      "terminal.integrated.fontSize": 30, //字体大小设置
+      "terminal.integrated.fontFamily": "Lucida Console", //字体设置
+      "terminal.integrated.shell.linux": "/bin/zsh",
+  },
+  "C_Cpp.default.compilerPath": "d:\\ENV_TOOLS\\mingw64\\bin\\gcc.exe",
+}
