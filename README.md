@@ -10,7 +10,7 @@
 
 ```powershell
 $env:Path = "D:\ENV_TOOLS\mingw64\bin;$env:Path"
-cmake -S . -B build -G "MinGW Makefiles"
+cmake -S . -B build
 cmake --build build -j 4
 .\bin\main.exe
 ```
@@ -22,6 +22,7 @@ cmake --build build -j 4
 ## 包含的页面
 
 1. **TIME**：数字表盘，每秒更新时间。
+   点击 `CALCULATOR` 可进入四则运算页面，点击 `BACK` 返回表盘。
 2. **STEPS**：步数和每日目标进度条。
 3. **HEART**：使用圆弧显示模拟心率。
 4. **SET**：深色模式开关和亮度滑块。
@@ -30,7 +31,7 @@ cmake --build build -j 4
 
 ## 接入现有 LVGL 9.x 工程
 
-1. 将 `smartwatch_demo.c` 和 `smartwatch_demo.h` 加入工程。
+1. 将 `smartwatch_demo.c`、`smartwatch_demo.h` 和整个 `smartwatch/` 目录加入工程。
 2. 确认 `lv_conf.h` 启用了 Montserrat 24 和 48 字体：
 
 ```c
@@ -78,6 +79,7 @@ while(1) {
 - `lv_arc`：心率圆环。
 - `lv_switch`：深色模式开关。
 - `lv_slider`：亮度设置示例。
+- `lv_buttonmatrix`：用一个控件组成计算器键盘。
 
 ### 5. 事件
 
@@ -85,7 +87,7 @@ while(1) {
 
 ### 6. Timer 与动画
 
-`lv_timer_create(tick_cb, 1000, NULL)` 每秒执行一次回调，更新时钟、步数和心率。步数条使用 `LV_ANIM_ON` 平滑移动。真实项目中，只需把模拟值替换成传感器数据。
+`lv_timer_create(update_timer_cb, 5000, &watch)` 每 5 秒执行一次模拟更新，刷新时钟、步数和心率。步数条使用 `LV_ANIM_ON` 平滑移动。真实项目中，只需把模拟值替换成传感器数据。
 
 ### 7. 样式
 
@@ -99,8 +101,16 @@ while(1) {
 4. 将模拟步数替换为自己的变量或传感器读取函数。
 5. 最后再添加图标、页面转场和真实 RTC，避免一开始引入过多概念。
 
-## 文件说明
+## 模块说明
 
-- `smartwatch_demo.c`：完整 UI 和交互逻辑。
-- `smartwatch_demo.h`：对外接口。
+- `smartwatch_demo.c`：协调层，管理 Tabview、模拟数据、Timer、主题和页面导航。
+- `smartwatch/clock_page.c`：Clock 页面和计算器入口。
+- `smartwatch/steps_page.c`：步数页面。
+- `smartwatch/heart_page.c`：心率页面。
+- `smartwatch/settings_page.c`：设置、主题开关和亮度 Slider。
+- `smartwatch/calculator_page.c`：计算器 UI、输入和运算逻辑。
+- `smartwatch/watch_theme.h`：模块共享的主题数据类型，不包含页面逻辑。
+- `smartwatch_demo.h`：整个 Demo 的对外启动接口。
 - `main_example.c`：如何从平台工程启动 UI。
+
+五个功能模块不会直接引用彼此。Clock 和 Settings 通过回调把用户操作通知协调层；协调层再决定是否打开计算器或更新全局主题。

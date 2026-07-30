@@ -17,7 +17,7 @@ Demo 有四页：
 | HEART | Arc、Label | 显示模拟心率 |
 | SET | Switch、Slider | 切换主题、演示亮度设置 |
 
-数据不来自真实硬件：`lv_timer` 每秒把时间、步数和心率更新一次。
+数据不来自真实硬件：当前 `lv_timer` 每 5 秒模拟更新时间、步数和心率。
 
 > 重要：当前工程的 FreeRTOS 是关闭的。程序使用普通的 `while(1)` 循环运行 LVGL。这很适合第一阶段学习。
 
@@ -29,8 +29,8 @@ Demo 有四页：
 
 1. 运行程序，认识四个页面。
 2. 阅读 `main/src/main.c`，理解程序入口。
-3. 阅读 `smartwatch_demo_create()`，理解界面创建顺序。
-4. 学习 Label、Bar、Arc、Switch、Slider。
+3. 阅读 `smartwatch_demo_create()`，理解协调层如何创建五个模块。
+4. 分别阅读 `smartwatch/` 下的页面模块，学习 Label、Bar、Arc、Switch、Slider。
 5. 理解事件回调和 Timer 回调。
 6. 做文末的小实验。
 7. 最后再启用 FreeRTOS。
@@ -53,7 +53,7 @@ cmake --build build -j 4
 - `-j 4`：最多使用 4 个并行编译任务。
 - `.\bin\main.exe`：运行编译结果。
 
-如果只修改了 `smartwatch_demo.c`，CMake 通常只重新编译相关文件，不会从头编译整个 LVGL。
+如果只修改了 `smartwatch_demo.c` 或 `smartwatch/` 下的某个模块，CMake 通常只重新编译相关文件，不会从头编译整个 LVGL。
 
 ---
 
@@ -349,6 +349,43 @@ lv_timer_create(tick_cb, 1000, NULL);
 
 它不是 FreeRTOS 软件定时器，而是 LVGL 自己的 Timer。只有不断调用 `lv_timer_handler()`，它才能得到执行。
 
+### 7.6 五个功能模块如何解耦
+
+现在 UI 被拆成五个独立模块，`smartwatch_demo.c` 不再绘制各页面的具体控件，只充当协调层：
+
+```text
+                    smartwatch_demo.c
+                  （状态、Timer、导航）
+            ┌──────────┼──────────┐
+            ▼          ▼          ▼
+       Clock 模块   Steps 模块   Heart 模块
+            │
+            │ 回调：请求打开
+            ▼
+      Calculator 模块       Settings 模块
+                              │
+                              └─ 回调：主题发生变化
+```
+
+模块之间不直接调用。例如 Clock 模块不知道 Calculator 模块的存在。Clock 只保存一个由协调层传入的回调：
+
+```c
+clock_page_create(&watch.clock_page,
+                  clock_tab,
+                  &watch.theme,
+                  open_calculator_cb,
+                  &watch);
+```
+
+用户点击 Clock 中的按钮时，Clock 调用这个回调。随后协调层决定隐藏 Tabview 并打开 Calculator。这样以后即使替换计算器模块，也不需要修改 Clock 模块。
+
+每个模块的接口分成两类：
+
+- `xxx_page_create()`：创建该模块自己的控件。
+- `xxx_page_set_xxx()`：由协调层传入新数据，例如时间、步数和心率。
+
+`watch_theme.h` 只是公共数据协议，保存背景色、卡片色和文字色。它不包含页面逻辑，因此五个功能模块仍然彼此独立。
+
 ---
 
 ## 8. Flex 布局
@@ -489,6 +526,51 @@ static void theme_event_cb(lv_event_t *event)
 4. 重新应用主题颜色。
 
 事件适合处理用户操作，例如点击、长按、值变化、滚动和获得焦点。
+
+### 10.1 从 Clock 页面进入计算器
+
+Clock 页面使用普通 Button 作为入口，并把点击事件转换成回调通知：
+
+```c
+lv_obj_t *calculator_button = lv_button_create(page);
+lv_obj_add_event_cb(calculator_button,
+                    calculator_button_event_cb,
+                    LV_EVENT_CLICKED,
+                    page);
+```
+
+Clock 模块的事件回调再调用协调层传入的 `open_calculator_cb()`。协调层隐藏 Tabview，并通过 `calculator_page_open()` 创建全屏计算器。`BACK` 也通过回调通知协调层；协调层重新显示 Tabview、把它移到最前面，再调用 `calculator_page_close()`。
+
+计算器键盘使用 `lv_buttonmatrix`。它把多个按钮放进一个控件，比逐个创建数字按钮更简单：
+
+```c
+static const char *calculator_key_map[] = {
+    "C", "DEL", "/", "*", "\n",
+    "7", "8", "9", "-", "\n",
+    "4", "5", "6", "+", "\n",
+    "1", "2", "3", "=", "\n",
+    "0", ".", ""
+};
+```
+
+- 每个字符串是一个按键的文字。
+- `"\n"` 表示键盘换到下一行。
+- 最后的空字符串表示按键表结束。
+
+矩阵按键共用 `calculator_key_event_cb()`。回调先读取被点击按键的文字，再用 `if` 判断它属于数字、运算符、清除、删除还是等号。独立的返回按钮使用 `calculator_back_event_cb()`。
+
+`calculator_page_t` 中的 `input` 是字符数组，用来保存屏幕上正在输入的数字。例如按下 `1`、`2`、`.`、`5` 后，它保存字符串 `"12.5"`。计算前使用 `strtod()` 把字符串转换为数值；计算后使用 `snprintf()` 把数值重新转换为显示字符串。
+
+一次 `2 + 3 =` 的状态变化是：
+
+```text
+输入 2      → 结果行显示 2
+按下 +      → 计算行显示 "2 +"
+输入 3      → 计算行显示 "2 + 3"，结果行显示 3
+按下 =      → 计算行显示 "2 + 3 ="，结果行显示 5
+```
+
+除数为 0 时会显示 `Error`。这个计算器适合学习事件和状态管理，不用于需要高精度的小数或财务计算。
 
 ---
 
@@ -809,8 +891,14 @@ LVGL 首次构建源文件很多，耗时较长是正常的。后续只修改应
 
 | 文件 | 初学阶段是否重点阅读 | 作用 |
 | --- | --- | --- |
-| `smartwatch_demo.c` | 是 | 手表界面和交互逻辑 |
+| `smartwatch_demo.c` | 是 | 五个模块的协调层：状态、Timer、主题和导航 |
 | `smartwatch_demo.h` | 是 | 对外接口声明 |
+| `smartwatch/clock_page.c` | 是 | Clock 页面和计算器入口 |
+| `smartwatch/steps_page.c` | 是 | 步数页面及数据更新接口 |
+| `smartwatch/heart_page.c` | 是 | 心率页面及数据更新接口 |
+| `smartwatch/settings_page.c` | 是 | 设置页面、Slider 和主题回调 |
+| `smartwatch/calculator_page.c` | 是 | 计算器 UI 和运算状态 |
+| `smartwatch/watch_theme.h` | 了解 | 五个模块共享的主题数据协议 |
 | `main/src/main.c` | 是 | 初始化 LVGL、SDL 和主循环 |
 | `lv_conf.h` | 了解 | 开关 LVGL 功能和字体 |
 | `CMakeLists.txt` | 了解 | 指定编译哪些源码、链接哪些库 |
